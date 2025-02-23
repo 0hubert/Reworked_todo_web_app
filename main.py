@@ -127,7 +127,9 @@ def new_note(title=None):
             db.session.rollback()
             return "Error: Title must be unique", 400
     
-    return render_template('new_note.html', suggested_title=title)
+    return render_template('new_note.html', 
+                         suggested_title=title,
+                         all_notes=get_all_notes())
 
 @app.route('/note/<int:id>')
 def view_note(id):
@@ -182,7 +184,9 @@ def edit_note(id):
             db.session.rollback()
             return "Error: Title must be unique", 400
     
-    return render_template('edit_note.html', note=note)
+    return render_template('edit_note.html', 
+                         note=note,
+                         all_notes=get_all_notes())
 
 @app.route('/note/<int:id>/delete')
 def delete_note(id):
@@ -234,7 +238,8 @@ def search():
 
     return render_template('search.html', 
                          query=query,
-                         results=results)
+                         results=results,
+                         all_notes=get_all_notes())
 
 @app.route('/uploads/<file_id>')
 def download_file(file_id):
@@ -259,7 +264,8 @@ def delete_attachment(file_id):
 
 @app.route('/graph')
 def graph_view():
-    return render_template('graph.html')
+    return render_template('graph.html',
+                         all_notes=get_all_notes())
 
 @app.route('/api/graph-data')
 def graph_data():

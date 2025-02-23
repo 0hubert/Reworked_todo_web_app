@@ -112,11 +112,13 @@
 
             // Command definitions
             const commands = [
+                // Basic commands
                 {
                     id: 'new-note',
                     title: 'Create New Note',
                     icon: '📝',
                     shortcut: '⌘N',
+                    category: 'basic',
                     action: () => window.location.href = '{{ url_for("new_note") }}'
                 },
                 {
@@ -124,6 +126,7 @@
                     title: 'Search Notes',
                     icon: '🔍',
                     shortcut: '⌘F',
+                    category: 'basic',
                     action: (query) => {
                         if (query) {
                             window.location.href = `{{ url_for("search") }}?q=${encodeURIComponent(query)}`;
@@ -135,6 +138,7 @@
                     title: 'Open Graph View',
                     icon: '🕸️',
                     shortcut: '⌘G',
+                    category: 'basic',
                     action: () => window.location.href = '{{ url_for("graph_view") }}'
                 },
                 {
@@ -142,7 +146,93 @@
                     title: 'Toggle Dark Mode',
                     icon: '🌓',
                     shortcut: '⌘L',
+                    category: 'basic',
                     action: () => document.getElementById('theme-toggle').click()
+                },
+
+                // Recent notes
+                {% for note in all_notes[:5] %}
+                {
+                    id: 'note-{{ note.id }}',
+                    title: '{{ note.title }}',
+                    icon: '📄',
+                    category: 'recent',
+                    description: 'Last updated: {{ note.updated_at.strftime("%Y-%m-%d") }}',
+                    action: () => window.location.href = '{{ url_for("view_note", id=note.id) }}'
+                },
+                {% endfor %}
+
+                // Templates
+                {
+                    id: 'template-meeting',
+                    title: 'Insert Meeting Template',
+                    icon: '📅',
+                    category: 'template',
+                    action: () => insertTemplate('meeting')
+                },
+                {
+                    id: 'template-daily',
+                    title: 'Insert Daily Note Template',
+                    icon: '📆',
+                    category: 'template',
+                    action: () => insertTemplate('daily')
+                },
+                {
+                    id: 'template-project',
+                    title: 'Insert Project Template',
+                    icon: '📋',
+                    category: 'template',
+                    action: () => insertTemplate('project')
+                },
+
+                // Text formatting
+                {
+                    id: 'format-bold',
+                    title: 'Bold Text',
+                    icon: '𝐁',
+                    category: 'format',
+                    shortcut: '⌘B',
+                    action: () => formatText('**', '**')
+                },
+                {
+                    id: 'format-italic',
+                    title: 'Italic Text',
+                    icon: '𝑰',
+                    category: 'format',
+                    shortcut: '⌘I',
+                    action: () => formatText('*', '*')
+                },
+                {
+                    id: 'format-code',
+                    title: 'Code Block',
+                    icon: '⌨️',
+                    category: 'format',
+                    shortcut: '⌘K',
+                    action: () => formatText('```\n', '\n```')
+                },
+                {
+                    id: 'format-link',
+                    title: 'Insert Wiki Link',
+                    icon: '🔗',
+                    category: 'format',
+                    shortcut: '⌘L',
+                    action: () => formatText('[[', ']]')
+                },
+
+                // File operations
+                {
+                    id: 'file-attach',
+                    title: 'Attach File',
+                    icon: '📎',
+                    category: 'file',
+                    action: () => document.getElementById('files').click()
+                },
+                {
+                    id: 'file-export',
+                    title: 'Export Note as Markdown',
+                    icon: '📤',
+                    category: 'file',
+                    action: () => exportNote()
                 }
             ];
 
@@ -213,20 +303,50 @@
 
                 const filtered = commands.filter(cmd => 
                     cmd.title.toLowerCase().includes(query) ||
-                    cmd.id.toLowerCase().includes(query)
+                    cmd.id.toLowerCase().includes(query) ||
+                    (cmd.category && cmd.category.toLowerCase().includes(query)) ||
+                    (cmd.description && cmd.description.toLowerCase().includes(query))
                 );
-                renderResults(filtered);
+
+                // Group results by category
+                const grouped = filtered.reduce((acc, cmd) => {
+                    const category = cmd.category || 'other';
+                    if (!acc[category]) acc[category] = [];
+                    acc[category].push(cmd);
+                    return acc;
+                }, {});
+
+                renderGroupedResults(grouped);
             }
 
-            function renderResults(results) {
-                selectedIndex = -1;
-                commandResults.innerHTML = results.map((cmd, index) => `
-                    <div class="command-item" data-index="${index}" onclick="(${cmd.action.toString()})('${commandInput.value}')">
-                        <span class="command-icon">${cmd.icon}</span>
-                        <span class="command-title">${cmd.title}</span>
-                        <span class="command-shortcut">${cmd.shortcut}</span>
-                    </div>
-                `).join('');
+            function renderGroupedResults(grouped) {
+                const categoryOrder = ['basic', 'recent', 'template', 'format', 'file', 'other'];
+                const categoryTitles = {
+                    basic: 'Basic Commands',
+                    recent: 'Recent Notes',
+                    template: 'Templates',
+                    format: 'Text Formatting',
+                    file: 'File Operations',
+                    other: 'Other'
+                };
+
+                commandResults.innerHTML = categoryOrder
+                    .filter(category => grouped[category] && grouped[category].length)
+                    .map(category => `
+                        <div class="command-category">
+                            <div class="category-title">${categoryTitles[category]}</div>
+                            ${grouped[category].map((cmd, index) => `
+                                <div class="command-item" data-index="${index}" onclick="(${cmd.action.toString()})()">
+                                    <span class="command-icon">${cmd.icon}</span>
+                                    <div class="command-info">
+                                        <span class="command-title">${cmd.title}</span>
+                                        ${cmd.description ? `<span class="command-description">${cmd.description}</span>` : ''}
+                                    </div>
+                                    ${cmd.shortcut ? `<span class="command-shortcut">${cmd.shortcut}</span>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `).join('');
             }
 
             function updateSelection() {
@@ -237,6 +357,75 @@
                         item.scrollIntoView({ block: 'nearest' });
                     }
                 });
+            }
+
+            // Template insertion function
+            function insertTemplate(type) {
+                const templates = {
+                    meeting: `# Meeting: [Title]
+Date: ${new Date().toISOString().split('T')[0]}
+Participants: 
+
+## Agenda
+1. 
+2. 
+3. 
+
+## Notes
+
+## Action Items
+- [ ] 
+- [ ] 
+
+## Next Steps`,
+                    daily: `# Daily Note: ${new Date().toISOString().split('T')[0]}
+
+## Tasks
+- [ ] 
+
+## Notes
+
+## Tomorrow`,
+                    project: `# Project: [Name]
+
+## Overview
+
+## Objectives
+1. 
+2. 
+
+## Timeline
+
+## Resources
+
+## Notes`
+                };
+
+                const editor = document.querySelector('.CodeMirror').CodeMirror;
+                if (editor) {
+                    editor.replaceSelection(templates[type]);
+                }
+            }
+
+            // Text formatting function
+            function formatText(prefix, suffix) {
+                const editor = document.querySelector('.CodeMirror').CodeMirror;
+                if (editor) {
+                    const selection = editor.getSelection();
+                    editor.replaceSelection(prefix + selection + suffix);
+                }
+            }
+
+            // Export function
+            function exportNote() {
+                const content = document.querySelector('.note-content').innerText;
+                const blob = new Blob([content], { type: 'text/markdown' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'note.md';
+                a.click();
+                window.URL.revokeObjectURL(url);
             }
         });
     </script>

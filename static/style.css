@@ -870,4 +870,43 @@ button:hover {
         width: 90%;
         top: 10%;
     }
+}
+
+/* Add to command palette styles */
+.command-category {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.category-title {
+    padding: 0.5rem 1rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.command-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.command-description {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.command-item {
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.command-item:hover {
+    background-color: var(--bg-primary);
 } 
