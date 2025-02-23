@@ -42,15 +42,42 @@
 <!-- Add CodeMirror and its dependencies -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/nord.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/show-hint.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/markdown/markdown.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/edit/continuelist.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/show-hint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/markdown-hint.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/mode/overlay.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/xml/xml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/gfm/gfm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Mermaid
+    mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+
+    // Custom overlay mode for wiki links
+    CodeMirror.defineMode("wiki-links", function(config, parserConfig) {
+        const wikiOverlay = {
+            token: function(stream, state) {
+                if (stream.match(/\[\[/)) {
+                    while (stream.next() != null && !stream.match(/\]\]/, false)) {}
+                    stream.match(/\]\]/);
+                    return "wiki-link";
+                }
+                while (stream.next() != null && !stream.match(/\[\[/, false)) {}
+                return null;
+            }
+        };
+        return CodeMirror.overlayMode(CodeMirror.getMode(config, "gfm"), wikiOverlay);
+    });
+
     // Initialize CodeMirror
     const editor = CodeMirror(document.getElementById('editor'), {
-        mode: 'markdown',
+        mode: "wiki-links",
         theme: 'nord',
         lineNumbers: true,
         lineWrapping: true,
@@ -59,18 +86,98 @@ document.addEventListener('DOMContentLoaded', function() {
             'Ctrl-Space': 'autocomplete',
             'Tab': function(cm) {
                 cm.replaceSelection('    ');
-            }
+            },
+            // Markdown shortcuts
+            'Ctrl-B': function(cm) { formatText(cm, '**', '**'); },
+            'Ctrl-I': function(cm) { formatText(cm, '_', '_'); },
+            'Ctrl-K': function(cm) { formatText(cm, '`', '`'); },
+            'Ctrl-L': function(cm) { formatText(cm, '[[', ']]'); },
+            'Ctrl-H': function(cm) { insertHeading(cm); },
+            'Ctrl-M': function(cm) { insertMermaidDiagram(cm); },
+            'Ctrl-E': function(cm) { insertLatexEquation(cm); }
         },
         placeholder: 'Start writing...',
+        autoCloseBrackets: true,
+        matchBrackets: true,
+        hintOptions: {
+            completeSingle: false,
+            hint: wikiLinkHint
+        }
     });
 
-    // Set up real-time preview
+    // Wiki-link autocompletion
+    function wikiLinkHint(cm) {
+        const cursor = cm.getCursor();
+        const line = cm.getLine(cursor.line);
+        const start = cursor.ch;
+        const end = cursor.ch;
+        
+        const word = line.slice(Math.max(0, start - 2), end);
+        if (word === '[[') {
+            return fetch('/api/notes/list')
+                .then(response => response.json())
+                .then(data => {
+                    return {
+                        list: data.map(note => note.title),
+                        from: CodeMirror.Pos(cursor.line, start - 2),
+                        to: CodeMirror.Pos(cursor.line, end)
+                    };
+                });
+        }
+    }
+
+    // Text formatting helper
+    function formatText(cm, prefix, suffix) {
+        const selection = cm.getSelection();
+        cm.replaceSelection(prefix + selection + suffix);
+    }
+
+    // Insert heading
+    function insertHeading(cm) {
+        const cursor = cm.getCursor();
+        const line = cm.getLine(cursor.line);
+        const prefix = line.match(/^#+\s*/)?.[0] || '';
+        
+        if (prefix) {
+            const level = prefix.trim().length;
+            if (level < 6) {
+                cm.replaceRange('#' + prefix, 
+                    {line: cursor.line, ch: 0}, 
+                    {line: cursor.line, ch: prefix.length});
+            } else {
+                cm.replaceRange('', 
+                    {line: cursor.line, ch: 0}, 
+                    {line: cursor.line, ch: prefix.length});
+            }
+        } else {
+            cm.replaceRange('# ', 
+                {line: cursor.line, ch: 0}, 
+                {line: cursor.line, ch: 0});
+        }
+    }
+
+    // Insert Mermaid diagram
+    function insertMermaidDiagram(cm) {
+        const template = `\`\`\`mermaid
+graph TD
+    A[Start] --> B[Process]
+    B --> C[End]
+\`\`\``;
+        cm.replaceSelection(template);
+    }
+
+    // Insert LaTeX equation
+    function insertLatexEquation(cm) {
+        const template = '$$\ny = mx + b\n$$';
+        cm.replaceSelection(template);
+    }
+
+    // Handle preview updates with LaTeX and Mermaid
     let previewTimeout;
     editor.on('change', function() {
         clearTimeout(previewTimeout);
         previewTimeout = setTimeout(updatePreview, 300);
         
-        // Update hidden textarea for form submission
         document.getElementById('content').value = editor.getValue();
     });
 
@@ -78,14 +185,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const content = editor.getValue();
         fetch('/api/preview', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: content })
         })
         .then(response => response.json())
         .then(data => {
-            document.getElementById('preview').innerHTML = data.html;
+            const preview = document.getElementById('preview');
+            preview.innerHTML = data.html;
+            
+            // Render LaTeX
+            MathJax.typesetPromise([preview]);
+            
+            // Render Mermaid diagrams
+            preview.querySelectorAll('.language-mermaid').forEach(block => {
+                const code = block.textContent;
+                const div = document.createElement('div');
+                div.className = 'mermaid';
+                div.textContent = code;
+                block.parentNode.replaceChild(div, block);
+                mermaid.init(undefined, div);
+            });
         });
     }
 
@@ -96,22 +215,6 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleBtn.addEventListener('click', function() {
         editorContainer.classList.toggle('preview-hidden');
         editor.refresh(); // Refresh CodeMirror after layout changes
-    });
-
-    // Wiki-link autocompletion
-    editor.on('keyup', function(cm, event) {
-        if (event.key === '[') {
-            const pos = cm.getCursor();
-            const line = cm.getLine(pos.line);
-            if (line[pos.ch - 2] === '[') {
-                // Show wiki-link suggestions
-                fetch('/api/notes/list')
-                    .then(response => response.json())
-                    .then(data => {
-                        // Implementation for autocomplete dropdown
-                    });
-            }
-        }
     });
 });
 </script>

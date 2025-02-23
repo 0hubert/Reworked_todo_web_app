@@ -1118,4 +1118,58 @@ button:hover {
     color: var(--accent-primary);
     padding: 0 2px;
     border-radius: 2px;
+}
+
+/* Editor enhancements */
+.CodeMirror .wiki-link {
+    color: var(--link-color);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--link-color);
+}
+
+.CodeMirror-hints {
+    position: absolute;
+    z-index: 10;
+    overflow: hidden;
+    list-style: none;
+    margin: 0;
+    padding: 2px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    box-shadow: 0 4px 8px var(--card-shadow);
+    max-height: 20em;
+    overflow-y: auto;
+}
+
+.CodeMirror-hint {
+    margin: 0;
+    padding: 4px 8px;
+    border-radius: 2px;
+    white-space: pre;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+li.CodeMirror-hint-active {
+    background: var(--accent-primary);
+    color: white;
+}
+
+/* Mermaid diagrams */
+.mermaid {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+[data-theme="dark"] .mermaid {
+    background: var(--bg-tertiary);
+}
+
+/* LaTeX equations */
+.MathJax {
+    overflow-x: auto;
+    max-width: 100%;
 } 
