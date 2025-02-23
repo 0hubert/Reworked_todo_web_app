@@ -1,0 +1,19 @@
+day 89 plan
+
+note taking app with:
+
+split pane view
+
+dark mode
+
+attachments
+
+wiki style links
+
+search
+
+tags
+
+formatting options
+
+CRUD operations

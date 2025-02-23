@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="graph-container">
+    <div class="graph-controls">
+        <button id="zoom-in">+</button>
+        <button id="zoom-out">-</button>
+        <button id="reset-zoom">Reset</button>
+        <button id="toggle-link-mode" class="link-mode-btn">Link Mode</button>
+    </div>
+    <div id="graph"></div>
+    <div class="graph-tooltip" style="display: none;"></div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const width = window.innerWidth - 40;
+    const height = window.innerHeight - 150;
+    let linkMode = false;
+    let sourceNode = null;
+    let dragLine = null;
+    let nodes; // Declare nodes at the top level
+    let simulation; // Declare simulation at the top level
+    
+    // Create SVG container
+    const svg = d3.select('#graph')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    // Add zoom behavior
+    const g = svg.append('g');
+    let currentTransform = d3.zoomIdentity;
+    
+    const zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => {
+            currentTransform = event.transform;
+            g.attr('transform', currentTransform);
+        });
+    
+    svg.call(zoom);
+    
+    // Add a group for the temporary drag line
+    const dragLineGroup = g.append('g');
+    dragLineGroup.append('line')
+        .attr('class', 'drag-line')
+        .style('display', 'none');
+
+    // Create drag behavior
+    const drag = d3.drag()
+        .on('start', dragstarted)
+        .on('drag', dragged)
+        .on('end', dragended);
+
+    // Setup force simulation
+    simulation = d3.forceSimulation()
+        .force('link', d3.forceLink().id(d => d.id))
+        .force('charge', d3.forceManyBody().strength(-500))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(50));
+
+    // Toggle link mode
+    document.getElementById('toggle-link-mode').addEventListener('click', function() {
+        if (!nodes) return; // Guard against early clicks
+        
+        linkMode = !linkMode;
+        this.classList.toggle('active');
+        svg.classed('link-mode', linkMode);
+        
+        if (linkMode) {
+            // Stop the simulation and fix all nodes in place
+            simulation.stop();
+            nodes.each(d => {
+                // Store current position
+                d.fx = d.x;
+                d.fy = d.y;
+            });
+            // Remove drag behavior
+            nodes.on('.drag', null);
+        } else {
+            // Release all nodes and restart simulation
+            nodes.each(d => {
+                d.fx = null;
+                d.fy = null;
+            });
+            nodes.call(drag);
+            simulation.alpha(0.3).restart();
+        }
+    });
+
+    // Load and render graph data
+    fetch('/api/graph-data')
+        .then(response => response.json())
+        .then(data => {
+            // Create edges
+            const links = g.selectAll('line')
+                .data(data.edges)
+                .join('line')
+                .attr('class', 'graph-edge');
+            
+            // Create nodes
+            nodes = g.selectAll('g')  // Assign to the outer nodes variable
+                .data(data.nodes)
+                .join('g')
+                .attr('class', 'graph-node')
+                .call(drag);
+            
+            // Add circles to nodes
+            nodes.append('circle')
+                .attr('r', d => {
+                    const connectionCount = data.edges.filter(e => 
+                        e.source === d.id || e.target === d.id
+                    ).length;
+                    return Math.max(5, Math.min(20, 5 + connectionCount * 2));
+                });
+            
+            // Add title text
+            nodes.append('text')
+                .text(d => d.title)
+                .attr('x', 12)
+                .attr('y', 4);
+            
+            // Setup tooltip
+            const tooltip = d3.select('.graph-tooltip');
+            
+            // Node interaction
+            nodes
+                .on('mousedown', function(event, d) {
+                    if (linkMode) {
+                        event.stopPropagation();
+                        sourceNode = d;
+                        const [x, y] = d3.pointer(event, g.node());
+                        dragLine = dragLineGroup.select('line')
+                            .style('display', null)
+                            .attr('x1', x)
+                            .attr('y1', y)
+                            .attr('x2', x)
+                            .attr('y2', y);
+                    }
+                })
+                .on('mouseover', function(event, d) {
+                    if (!linkMode) {
+                        let tooltipContent = `
+                            <strong>${d.title}</strong><br>
+                            ${d.tags ? `Tags: ${d.tags}<br>` : ''}
+                        `;
+                        
+                        // Add attachments section if there are any
+                        if (d.attachments && d.attachments.length > 0) {
+                            tooltipContent += `
+                                <div class="tooltip-attachments">
+                                    <strong>Attachments:</strong><br>
+                                    ${d.attachments.map(att => 
+                                        `<span class="tooltip-file">
+                                            📎 ${att.filename} (${att.size})
+                                        </span>`
+                                    ).join('<br>')}
+                                </div>
+                            `;
+                        }
+                        
+                        tooltipContent += `<div class="tooltip-hint">
+                            ${linkMode ? 'Drag to connect' : 'Click to open note'}
+                        </div>`;
+                        
+                        tooltip.style('display', 'block')
+                            .html(tooltipContent)
+                            .style('left', (event.pageX + 10) + 'px')
+                            .style('top', (event.pageY - 10) + 'px');
+                    }
+                })
+                .on('mouseout', () => tooltip.style('display', 'none'))
+                .on('mouseup', function(event, d) {
+                    if (linkMode && sourceNode && sourceNode !== d) {
+                        createNoteLink(sourceNode.title, d.title);
+                    }
+                })
+                .on('click', function(event, d) {
+                    if (!linkMode) {
+                        window.location.href = d.url;
+                    }
+                });
+
+            // Handle drag line
+            svg.on('mousemove', function(event) {
+                if (linkMode && sourceNode) {
+                    const [x, y] = d3.pointer(event, g.node());
+                    dragLine.attr('x2', x).attr('y2', y);
+                }
+            });
+
+            svg.on('mouseup', function() {
+                if (linkMode) {
+                    sourceNode = null;
+                    dragLine.style('display', 'none');
+                }
+            });
+
+            // Update simulation with the nodes
+            simulation
+                .nodes(data.nodes)
+                .on('tick', () => {
+                    links
+                        .attr('x1', d => d.source.x)
+                        .attr('y1', d => d.source.y)
+                        .attr('x2', d => d.target.x)
+                        .attr('y2', d => d.target.y);
+                    
+                    nodes.attr('transform', d => `translate(${d.x},${d.y})`);
+                });
+            
+            simulation.force('link')
+                .links(data.edges);
+            
+            // Zoom controls
+            document.getElementById('zoom-in').onclick = () => {
+                svg.transition().call(zoom.scaleBy, 1.5);
+            };
+            
+            document.getElementById('zoom-out').onclick = () => {
+                svg.transition().call(zoom.scaleBy, 0.75);
+            };
+            
+            document.getElementById('reset-zoom').onclick = () => {
+                svg.transition().call(zoom.transform, d3.zoomIdentity);
+            };
+        });
+
+    // Drag functions
+    function dragstarted(event) {
+        if (!linkMode && !event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+    }
+    
+    function dragged(event) {
+        if (!linkMode) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+    }
+    
+    function dragended(event) {
+        if (!linkMode) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
+    }
+
+    function createNoteLink(sourceTitle, targetTitle) {
+        fetch('/api/create-link', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                source_title: sourceTitle,
+                target_title: targetTitle
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Failed to create link: ' + data.error);
+            }
+        });
+    }
+});
+</script>
+{% endblock %} 

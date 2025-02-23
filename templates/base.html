@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obsidian-like Notes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav>
+        <h1><a href="{{ url_for('index') }}">Notes</a></h1>
+        <form action="{{ url_for('search') }}" method="GET" class="search-form">
+            <input type="text" name="q" placeholder="Search notes..." value="{{ request.args.get('q', '') }}">
+            <button type="submit">Search</button>
+        </form>
+        <div class="nav-actions">
+            <div class="theme-switch-wrapper">
+                <label class="theme-switch">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="slider round"></span>
+                </label>
+                <span class="theme-label">🌙</span>
+            </div>
+            <a href="{{ url_for('graph_view') }}" class="nav-btn">Graph View</a>
+            <a href="{{ url_for('new_note') }}" class="new-note-btn">New Note</a>
+        </div>
+    </nav>
+
+    <!-- Main Content Area with Sidebar -->
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>All Notes</h2>
+                <button id="toggle-sidebar" class="toggle-sidebar" title="Toggle Sidebar">◀</button>
+            </div>
+            <div class="notes-list">
+                {% for note in all_notes %}
+                <a href="{{ url_for('view_note', id=note.id) }}" 
+                   class="note-link {% if current_note and current_note.id == note.id %}active{% endif %}">
+                    <div class="note-link-title">{{ note.title }}</div>
+                    <div class="note-link-meta">
+                        {{ note.updated_at.strftime('%Y-%m-%d') }}
+                        {% if note.tags %}
+                        <span class="note-link-tags">{{ note.tags }}</span>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+
+    <!-- Add this right after <body> -->
+    <div id="command-palette" class="command-palette hidden">
+        <div class="command-input-wrapper">
+            <input type="text" id="command-input" placeholder="Type a command or search...">
+            <div class="command-hint">⌘/Ctrl + K</div>
+        </div>
+        <div class="command-results"></div>
+    </div>
+
+    <script>
+        // Dark mode logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const html = document.documentElement;
+            const themeLabel = document.querySelector('.theme-label');
+            const toggleSidebar = document.getElementById('toggle-sidebar');
+            const appContainer = document.querySelector('.app-container');
+
+            // Theme handling
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            html.setAttribute('data-theme', savedTheme);
+            themeToggle.checked = savedTheme === 'dark';
+            themeLabel.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+
+            themeToggle.addEventListener('change', function() {
+                const theme = this.checked ? 'dark' : 'light';
+                html.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                themeLabel.textContent = theme === 'dark' ? '☀️' : '🌙';
+            });
+
+            // Sidebar toggle
+            const sidebarState = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (sidebarState) {
+                appContainer.classList.add('sidebar-collapsed');
+                toggleSidebar.textContent = '▶';
+            }
+
+            toggleSidebar.addEventListener('click', function() {
+                appContainer.classList.toggle('sidebar-collapsed');
+                const isCollapsed = appContainer.classList.contains('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', isCollapsed);
+                this.textContent = isCollapsed ? '▶' : '◀';
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const commandPalette = document.getElementById('command-palette');
+            const commandInput = document.getElementById('command-input');
+            const commandResults = document.querySelector('.command-results');
+            let selectedIndex = -1;
+
+            // Command definitions
+            const commands = [
+                {
+                    id: 'new-note',
+                    title: 'Create New Note',
+                    icon: '📝',
+                    shortcut: '⌘N',
+                    action: () => window.location.href = '{{ url_for("new_note") }}'
+                },
+                {
+                    id: 'search',
+                    title: 'Search Notes',
+                    icon: '🔍',
+                    shortcut: '⌘F',
+                    action: (query) => {
+                        if (query) {
+                            window.location.href = `{{ url_for("search") }}?q=${encodeURIComponent(query)}`;
+                        }
+                    }
+                },
+                {
+                    id: 'graph',
+                    title: 'Open Graph View',
+                    icon: '🕸️',
+                    shortcut: '⌘G',
+                    action: () => window.location.href = '{{ url_for("graph_view") }}'
+                },
+                {
+                    id: 'toggle-theme',
+                    title: 'Toggle Dark Mode',
+                    icon: '🌓',
+                    shortcut: '⌘L',
+                    action: () => document.getElementById('theme-toggle').click()
+                }
+            ];
+
+            // Toggle command palette
+            document.addEventListener('keydown', function(e) {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                    e.preventDefault();
+                    toggleCommandPalette();
+                }
+                if (e.key === 'Escape' && !commandPalette.classList.contains('hidden')) {
+                    hideCommandPalette();
+                }
+            });
+
+            function toggleCommandPalette() {
+                commandPalette.classList.toggle('hidden');
+                if (!commandPalette.classList.contains('hidden')) {
+                    commandInput.value = '';
+                    commandInput.focus();
+                    showAllCommands();
+                }
+            }
+
+            function hideCommandPalette() {
+                commandPalette.classList.add('hidden');
+                selectedIndex = -1;
+            }
+
+            // Handle input
+            commandInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                filterCommands(query);
+            });
+
+            // Handle keyboard navigation
+            commandInput.addEventListener('keydown', function(e) {
+                const results = commandResults.querySelectorAll('.command-item');
+                
+                switch(e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        selectedIndex = Math.min(selectedIndex + 1, results.length - 1);
+                        updateSelection();
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        selectedIndex = Math.max(selectedIndex - 1, 0);
+                        updateSelection();
+                        break;
+                    case 'Enter':
+                        e.preventDefault();
+                        if (selectedIndex >= 0) {
+                            results[selectedIndex].click();
+                        }
+                        break;
+                }
+            });
+
+            function showAllCommands() {
+                renderResults(commands);
+            }
+
+            function filterCommands(query) {
+                if (!query) {
+                    showAllCommands();
+                    return;
+                }
+
+                const filtered = commands.filter(cmd => 
+                    cmd.title.toLowerCase().includes(query) ||
+                    cmd.id.toLowerCase().includes(query)
+                );
+                renderResults(filtered);
+            }
+
+            function renderResults(results) {
+                selectedIndex = -1;
+                commandResults.innerHTML = results.map((cmd, index) => `
+                    <div class="command-item" data-index="${index}" onclick="(${cmd.action.toString()})('${commandInput.value}')">
+                        <span class="command-icon">${cmd.icon}</span>
+                        <span class="command-title">${cmd.title}</span>
+                        <span class="command-shortcut">${cmd.shortcut}</span>
+                    </div>
+                `).join('');
+            }
+
+            function updateSelection() {
+                const items = commandResults.querySelectorAll('.command-item');
+                items.forEach((item, index) => {
+                    item.classList.toggle('selected', index === selectedIndex);
+                    if (index === selectedIndex) {
+                        item.scrollIntoView({ block: 'nearest' });
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

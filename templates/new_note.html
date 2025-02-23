@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="note-form">
+    <h2>New Note</h2>
+    <form method="POST" enctype="multipart/form-data" id="noteForm">
+        <div class="form-header">
+            <div>
+                <label for="title">Title:</label>
+                <input type="text" id="title" name="title" value="{{ suggested_title }}" required>
+            </div>
+            <div>
+                <label for="tags">Tags:</label>
+                <input type="text" id="tags" name="tags" placeholder="comma-separated tags">
+            </div>
+        </div>
+        
+        <div class="editor-container">
+            <div class="editor-pane">
+                <div id="editor"></div>
+                <textarea id="content" name="content" style="display: none;"></textarea>
+            </div>
+            <div class="preview-pane">
+                <div id="preview" class="note-content"></div>
+            </div>
+        </div>
+
+        <div class="form-footer">
+            <div class="file-upload">
+                <label for="files">Attachments:</label>
+                <input type="file" id="files" name="files" multiple>
+                <small>Allowed files: .txt, .pdf, .png, .jpg, .jpeg, .gif, .doc, .docx, .md (Max 16MB)</small>
+            </div>
+            <div class="form-actions">
+                <button type="button" id="togglePreview">Toggle Preview</button>
+                <button type="submit">Save Note</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Add CodeMirror and its dependencies -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/nord.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/markdown/markdown.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/edit/continuelist.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize CodeMirror
+    const editor = CodeMirror(document.getElementById('editor'), {
+        mode: 'markdown',
+        theme: 'nord',
+        lineNumbers: true,
+        lineWrapping: true,
+        extraKeys: {
+            'Enter': 'newlineAndIndentContinueMarkdownList',
+            'Ctrl-Space': 'autocomplete',
+            'Tab': function(cm) {
+                cm.replaceSelection('    ');
+            }
+        },
+        placeholder: 'Start writing...',
+    });
+
+    // Set up real-time preview
+    let previewTimeout;
+    editor.on('change', function() {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(updatePreview, 300);
+        
+        // Update hidden textarea for form submission
+        document.getElementById('content').value = editor.getValue();
+    });
+
+    function updatePreview() {
+        const content = editor.getValue();
+        fetch('/api/preview', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ content: content })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('preview').innerHTML = data.html;
+        });
+    }
+
+    // Toggle preview pane
+    const toggleBtn = document.getElementById('togglePreview');
+    const editorContainer = document.querySelector('.editor-container');
+    
+    toggleBtn.addEventListener('click', function() {
+        editorContainer.classList.toggle('preview-hidden');
+        editor.refresh(); // Refresh CodeMirror after layout changes
+    });
+
+    // Wiki-link autocompletion
+    editor.on('keyup', function(cm, event) {
+        if (event.key === '[') {
+            const pos = cm.getCursor();
+            const line = cm.getLine(pos.line);
+            if (line[pos.ch - 2] === '[') {
+                // Show wiki-link suggestions
+                fetch('/api/notes/list')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Implementation for autocomplete dropdown
+                    });
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 
