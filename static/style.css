@@ -18,18 +18,25 @@
 :root[data-theme="dark"] {
     --bg-primary: #1a1a1a;
     --bg-secondary: #2d2d2d;
+    --bg-tertiary: #404040;
     --text-primary: #ffffff;
-    --text-secondary: #bbbbbb;
+    --text-secondary: #cccccc;
     --accent-primary: #64B5F6;
     --accent-secondary: #90CAF9;
-    --border-color: #404040;
-    --danger: #ef5350;
-    --danger-hover: #e57373;
-    --success: #66BB6A;
+    --border-color: #505050;
+    --danger: #ff5252;
+    --danger-hover: #ff7070;
+    --success: #69F0AE;
     --nav-bg: #000000;
     --nav-text: #ffffff;
-    --highlight-bg: #455A64;
-    --card-shadow: rgba(0,0,0,0.3);
+    --highlight-bg: #3d4852;
+    --card-shadow: rgba(0,0,0,0.5);
+    --code-bg: #2b2b2b;
+    --link-color: #64B5F6;
+    --link-hover: #90CAF9;
+    --tag-bg: #404040;
+    --tag-text: #90CAF9;
+    --selection-bg: #404859;
 }
 
 /* Theme switch styles */
@@ -413,17 +420,64 @@ main {
 
 /* Graph view styles */
 .graph-container {
+    background: var(--bg-primary);
+    height: calc(100vh - 64px);
     position: relative;
-    background: white;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-top: -2rem;  /* Remove default main padding */
-    height: calc(100vh - 64px);  /* Full height minus navbar */
 }
 
-#graph {
-    width: 100%;
-    height: 100%;
+[data-theme="dark"] .graph-container {
+    background: var(--bg-primary);
+}
+
+[data-theme="dark"] .graph-node text {
+    fill: var(--text-primary);
+    font-weight: 500;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+[data-theme="dark"] .graph-node circle {
+    fill: var(--accent-primary);
+    stroke: var(--bg-tertiary);
+    stroke-width: 2px;
+}
+
+[data-theme="dark"] .graph-node:hover circle {
+    fill: var(--accent-secondary);
+}
+
+[data-theme="dark"] .graph-node.selected circle {
+    stroke: var(--text-primary);
+    stroke-width: 3px;
+}
+
+[data-theme="dark"] .graph-edge {
+    stroke: var(--border-color);
+    stroke-opacity: 0.4;
+    stroke-width: 2px;
+}
+
+[data-theme="dark"] .graph-controls {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 2px 4px var(--card-shadow);
+}
+
+[data-theme="dark"] .graph-tooltip {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px 12px;
+    box-shadow: 0 4px 8px var(--card-shadow);
+    font-size: 14px;
+    max-width: 300px;
+}
+
+[data-theme="dark"] .drag-line {
+    stroke: var(--accent-primary);
+    stroke-width: 2px;
+    stroke-dasharray: 6 4;
 }
 
 .graph-controls {
@@ -909,4 +963,159 @@ button:hover {
 
 .command-item:hover {
     background-color: var(--bg-primary);
+}
+
+/* Add these styles for better dark mode visibility */
+[data-theme="dark"] .note-card,
+[data-theme="dark"] .note-view,
+[data-theme="dark"] .command-palette {
+    box-shadow: 0 4px 6px var(--card-shadow);
+}
+
+[data-theme="dark"] .note-content pre,
+[data-theme="dark"] .note-content code {
+    background: var(--code-bg);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .wiki-link {
+    color: var(--link-color);
+    border-bottom-color: var(--link-color);
+}
+
+[data-theme="dark"] .wiki-link:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+[data-theme="dark"] .wiki-link.missing {
+    color: var(--danger);
+    border-bottom-color: var(--danger);
+}
+
+[data-theme="dark"] .note-link-tags,
+[data-theme="dark"] .tag {
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+[data-theme="dark"] .command-item.selected {
+    background: var(--selection-bg);
+}
+
+[data-theme="dark"] .command-shortcut {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .sidebar {
+    border-right-color: var(--border-color);
+}
+
+[data-theme="dark"] .note-metadata {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .attachments,
+[data-theme="dark"] .linked-notes,
+[data-theme="dark"] .backlinks {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .CodeMirror {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .CodeMirror-gutters {
+    background: var(--bg-tertiary) !important;
+    border-right: 1px solid var(--border-color) !important;
+}
+
+[data-theme="dark"] .CodeMirror-selected {
+    background: var(--selection-bg) !important;
+}
+
+[data-theme="dark"] .graph-edge {
+    stroke: var(--border-color);
+    stroke-opacity: 0.6;
+}
+
+[data-theme="dark"] .graph-node circle {
+    fill: var(--accent-primary);
+    stroke: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .graph-node text {
+    fill: var(--text-primary);
+}
+
+[data-theme="dark"] .drag-line {
+    stroke: var(--accent-primary);
+}
+
+[data-theme="dark"] .graph-tooltip {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px var(--card-shadow);
+}
+
+/* Improve input visibility in dark mode */
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] input[type="text"]:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] select:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
+}
+
+/* Improve button visibility */
+[data-theme="dark"] button,
+[data-theme="dark"] .button {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] button:hover,
+[data-theme="dark"] .button:hover {
+    background: var(--selection-bg);
+}
+
+[data-theme="dark"] button.delete,
+[data-theme="dark"] .button.delete {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+[data-theme="dark"] button.delete:hover,
+[data-theme="dark"] .button.delete:hover {
+    background: var(--danger);
+    color: var(--text-primary);
+}
+
+/* Improve search results visibility */
+[data-theme="dark"] .search-result {
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .match {
+    background: var(--bg-tertiary);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+[data-theme="dark"] .highlight {
+    background: var(--highlight-bg);
+    color: var(--accent-primary);
+    padding: 0 2px;
+    border-radius: 2px;
 } 
