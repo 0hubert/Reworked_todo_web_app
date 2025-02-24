@@ -81,6 +81,13 @@ document.addEventListener('DOMContentLoaded', function() {
         theme: 'nord',
         lineNumbers: true,
         lineWrapping: true,
+        viewportMargin: Infinity,
+        scrollbarStyle: "native",
+        fixedGutter: true,
+        flattenSpans: true,
+        inputStyle: 'contenteditable',
+        lineSeparator: '\n',
+        configureMouse: () => ({addNew: false}),
         extraKeys: {
             'Enter': 'newlineAndIndentContinueMarkdownList',
             'Ctrl-Space': 'autocomplete',
@@ -215,6 +222,12 @@ graph TD
     toggleBtn.addEventListener('click', function() {
         editorContainer.classList.toggle('preview-hidden');
         editor.refresh(); // Refresh CodeMirror after layout changes
+    });
+
+    // Add this after initialization
+    editor.refresh();
+    window.addEventListener('resize', () => {
+        editor.refresh();
     });
 });
 </script>

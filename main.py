@@ -9,6 +9,7 @@ from xml.etree import ElementTree as etree
 from sqlalchemy import or_
 import os
 from werkzeug.utils import secure_filename
+import json
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todos.db'
@@ -358,6 +359,11 @@ def list_notes():
         'id': note.id,
         'title': note.title
     } for note in notes])
+
+def escapejs(val):
+    return json.dumps(str(val))[1:-1]
+
+app.jinja_env.filters['escapejs'] = escapejs
 
 if __name__ == '__main__':
     with app.app_context():

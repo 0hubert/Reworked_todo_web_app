@@ -119,7 +119,7 @@
                     icon: '📝',
                     shortcut: '⌘N',
                     category: 'basic',
-                    action: () => window.location.href = '{{ url_for("new_note") }}'
+                    action: () => window.location.href = "{{ url_for('new_note') }}"
                 },
                 {
                     id: 'search',
@@ -129,7 +129,7 @@
                     category: 'basic',
                     action: (query) => {
                         if (query) {
-                            window.location.href = `{{ url_for("search") }}?q=${encodeURIComponent(query)}`;
+                            window.location.href = `/search?q=${encodeURIComponent(query)}`;
                         }
                     }
                 },
@@ -139,7 +139,7 @@
                     icon: '🕸️',
                     shortcut: '⌘G',
                     category: 'basic',
-                    action: () => window.location.href = '{{ url_for("graph_view") }}'
+                    action: () => window.location.href = "{{ url_for('graph_view') }}"
                 },
                 {
                     id: 'toggle-theme',
@@ -153,13 +153,13 @@
                 // Recent notes
                 {% for note in all_notes[:5] %}
                 {
-                    id: 'note-{{ note.id }}',
-                    title: '{{ note.title }}',
+                    id: "note-{{ note.id }}",
+                    title: "{{ note.title|escapejs }}",
                     icon: '📄',
                     category: 'recent',
-                    description: 'Last updated: {{ note.updated_at.strftime("%Y-%m-%d") }}',
-                    action: () => window.location.href = '{{ url_for("view_note", id=note.id) }}'
-                },
+                    description: "Last updated: {{ note.updated_at.strftime('%Y-%m-%d') }}",
+                    action: () => window.location.href = "{{ url_for('view_note', id=note.id) }}"
+                }{{ "," if not loop.last }}
                 {% endfor %}
 
                 // Templates
@@ -215,7 +215,6 @@
                     title: 'Insert Wiki Link',
                     icon: '🔗',
                     category: 'format',
-                    shortcut: '⌘L',
                     action: () => formatText('[[', ']]')
                 },
 
