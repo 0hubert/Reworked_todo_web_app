@@ -22,6 +22,11 @@
                 </label>
                 <span class="theme-label">🌙</span>
             </div>
+            <button class="nav-btn" onclick="toggleCommandPalette()">
+                <span class="command-btn-icon">⌘</span>
+                <span class="command-btn-text">Commands</span>
+                <span class="command-btn-shortcut">(Alt+K)</span>
+            </button>
             <a href="{{ url_for('graph_view') }}" class="nav-btn">Graph View</a>
             <a href="{{ url_for('new_note') }}" class="new-note-btn">New Note</a>
         </div>
@@ -58,12 +63,52 @@
         </main>
     </div>
 
-    <!-- Add this right after <body> -->
+    <!-- Command Palette -->
     <div id="command-palette" class="command-palette hidden">
         <div class="command-input-wrapper">
             <input type="text" id="command-input" placeholder="Type a command or search...">
-            <div class="command-hint">⌘/Ctrl + K</div>
+            <div class="command-hint">Alt+K</div>
         </div>
+        
+        <!-- Add this keyboard shortcuts section -->
+        <div class="keyboard-shortcuts">
+            <div class="shortcuts-title">Keyboard Shortcuts</div>
+            <div class="shortcuts-grid">
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Alt+B</span>
+                    <span class="shortcut-desc">Bold text</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Alt+I</span>
+                    <span class="shortcut-desc">Italic text</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Alt+K</span>
+                    <span class="shortcut-desc">Code block</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Alt+L</span>
+                    <span class="shortcut-desc">Wiki link</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Alt+H</span>
+                    <span class="shortcut-desc">Toggle heading</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Alt+M</span>
+                    <span class="shortcut-desc">Insert Mermaid diagram</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Alt+E</span>
+                    <span class="shortcut-desc">Insert LaTeX equation</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Ctrl+Space</span>
+                    <span class="shortcut-desc">Autocomplete</span>
+                </div>
+            </div>
+        </div>
+        
         <div class="command-results"></div>
     </div>
 
@@ -102,8 +147,8 @@
             const commandResults = document.querySelector('.command-results');
             let selectedIndex = -1;
 
-            // Command definitions
-            const commands = [
+            // Command definitions - separate static and dynamic commands
+            const staticCommands = [
                 // Basic commands
                 {
                     id: 'new-note',
@@ -140,23 +185,25 @@
                     shortcut: '⌘L',
                     category: 'basic',
                     action: () => document.getElementById('theme-toggle').click()
-                },
+                }
+            ];
 
-                // Recent notes
+            // Dynamic recent notes commands
+            const recentNoteCommands = [
                 {% for note in all_notes[:5] %}
-                {
-                    id: "note-{{ note.id }}",
-                    title: "{{ note.title|escapejs }}",
-                    icon: '📄',
-                    category: 'recent',
-                    description: "Last updated: {{ note.updated_at.strftime('%Y-%m-%d') }}",
-                    action: () => window.location.href = "{{ url_for('view_note', id=note.id) }}"
-                }{% if not loop.last %},{% endif %}
+                    {
+                        id: "note-{{ note.id }}",
+                        title: "{{ note.title|escapejs }}",
+                        icon: '📄',
+                        category: 'recent',
+                        description: "Last updated: {{ note.updated_at.strftime('%Y-%m-%d') }}",
+                        action: () => window.location.href = "{{ url_for('view_note', id=note.id) }}"
+                    }{{ "," if not loop.last }}
                 {% endfor %}
+            ];
 
-                {% if all_notes %},{% endif %}  // Add comma only if there were notes
-
-                // Templates
+            // Template commands
+            const templateCommands = [
                 {
                     id: 'template-meeting',
                     title: 'Insert Meeting Template',
@@ -177,9 +224,11 @@
                     icon: '📋',
                     category: 'template',
                     action: () => insertTemplate('project')
-                },
+                }
+            ];
 
-                // Text formatting
+            // Format commands
+            const formatCommands = [
                 {
                     id: 'format-bold',
                     title: 'Bold Text',
@@ -210,9 +259,11 @@
                     icon: '🔗',
                     category: 'format',
                     action: () => formatText('[[', ']]')
-                },
+                }
+            ];
 
-                // File operations
+            // File operation commands
+            const fileCommands = [
                 {
                     id: 'file-attach',
                     title: 'Attach File',
@@ -229,9 +280,40 @@
                 }
             ];
 
+            // Add this after the command definitions
+            const keyboardShortcuts = [
+                {
+                    id: 'shortcuts-formatting',
+                    title: 'Keyboard Shortcuts - Formatting',
+                    icon: '⌨️',
+                    category: 'help',
+                    description: `
+                        Alt+B: Bold text
+                        Alt+I: Italic text
+                        Alt+K: Code block
+                        Alt+L: Wiki link
+                        Alt+H: Toggle heading
+                        Alt+M: Insert Mermaid diagram
+                        Alt+E: Insert LaTeX equation
+                        Ctrl+Space: Autocomplete
+                    `
+                }
+            ];
+
+            // Update the commands combination
+            const commands = [
+                // Add shortcuts to the top of the list
+                ...keyboardShortcuts,
+                ...staticCommands,
+                ...recentNoteCommands,
+                ...templateCommands,
+                ...formatCommands,
+                ...fileCommands
+            ];
+
             // Toggle command palette
             document.addEventListener('keydown', function(e) {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                if ((e.altKey) && e.key === 'k') {
                     e.preventDefault();
                     toggleCommandPalette();
                 }
@@ -245,7 +327,7 @@
                 if (!commandPalette.classList.contains('hidden')) {
                     commandInput.value = '';
                     commandInput.focus();
-                    showAllCommands();
+                    showAllCommands();  // Show commands immediately
                 }
             }
 
@@ -285,7 +367,27 @@
             });
 
             function showAllCommands() {
-                renderResults(commands);
+                // Group results by category
+                const grouped = commands.reduce((acc, cmd) => {
+                    const category = cmd.category || 'other';
+                    if (!acc[category]) acc[category] = [];
+                    acc[category].push(cmd);
+                    return acc;
+                }, {});
+
+                // Put 'help' category first
+                const categoryOrder = ['help', 'basic', 'recent', 'template', 'format', 'file', 'other'];
+                const categoryTitles = {
+                    help: 'Keyboard Shortcuts',
+                    basic: 'Basic Commands',
+                    recent: 'Recent Notes',
+                    template: 'Templates',
+                    format: 'Text Formatting',
+                    file: 'File Operations',
+                    other: 'Other'
+                };
+
+                renderGroupedResults(grouped, categoryOrder, categoryTitles);
             }
 
             function filterCommands(query) {
@@ -312,17 +414,7 @@
                 renderGroupedResults(grouped);
             }
 
-            function renderGroupedResults(grouped) {
-                const categoryOrder = ['basic', 'recent', 'template', 'format', 'file', 'other'];
-                const categoryTitles = {
-                    basic: 'Basic Commands',
-                    recent: 'Recent Notes',
-                    template: 'Templates',
-                    format: 'Text Formatting',
-                    file: 'File Operations',
-                    other: 'Other'
-                };
-
+            function renderGroupedResults(grouped, categoryOrder, categoryTitles) {
                 commandResults.innerHTML = categoryOrder
                     .filter(category => grouped[category] && grouped[category].length)
                     .map(category => `
@@ -420,6 +512,12 @@ Participants:
                 a.click();
                 window.URL.revokeObjectURL(url);
             }
+
+            // Also call showAllCommands when clicking the command button
+            document.querySelector('.nav-btn[onclick="toggleCommandPalette()"]').addEventListener('click', function(e) {
+                e.preventDefault();
+                toggleCommandPalette();
+            });
         });
     </script>
 </body>

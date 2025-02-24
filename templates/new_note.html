@@ -95,13 +95,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 cm.replaceSelection('    ');
             },
             // Markdown shortcuts
-            'Ctrl-B': function(cm) { formatText(cm, '**', '**'); },
-            'Ctrl-I': function(cm) { formatText(cm, '_', '_'); },
-            'Ctrl-K': function(cm) { formatText(cm, '`', '`'); },
-            'Ctrl-L': function(cm) { formatText(cm, '[[', ']]'); },
-            'Ctrl-H': function(cm) { insertHeading(cm); },
-            'Ctrl-M': function(cm) { insertMermaidDiagram(cm); },
-            'Ctrl-E': function(cm) { insertLatexEquation(cm); }
+            'Alt-B': function(cm) { formatText(cm, '**', '**'); },
+            'Alt-I': function(cm) { formatText(cm, '_', '_'); },
+            'Alt-K': function(cm) { formatText(cm, '`', '`'); },
+            'Alt-L': function(cm) { formatText(cm, '[[', ']]'); },
+            'Alt-H': function(cm) { insertHeading(cm); },
+            'Alt-M': function(cm) { insertMermaidDiagram(cm); },
+            'Alt-E': function(cm) { insertLatexEquation(cm); }
         },
         placeholder: 'Start writing...',
         autoCloseBrackets: true,

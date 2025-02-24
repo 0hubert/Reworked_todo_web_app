@@ -1226,4 +1226,81 @@ li.CodeMirror-hint-active {
 .MathJax {
     overflow-x: auto;
     max-width: 100%;
+}
+
+/* Command button styles */
+.nav-btn.command-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255,255,255,0.1);
+}
+
+.command-btn-icon {
+    font-size: 1.1rem;
+}
+
+.command-btn-shortcut {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .command-btn-text, .command-btn-shortcut {
+        display: none;
+    }
+    
+    .command-btn-icon {
+        margin: 0;
+    }
+}
+
+/* Keyboard shortcuts section */
+.keyboard-shortcuts {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.shortcuts-title {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.5rem;
+}
+
+.shortcut-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem;
+}
+
+.shortcut-key {
+    background: var(--bg-tertiary);
+    color: var(--accent-primary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-family: monospace;
+    min-width: 80px;
+    text-align: center;
+}
+
+.shortcut-desc {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+[data-theme="dark"] .shortcut-key {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
 } 
