@@ -19,11 +19,21 @@
             <div class="editor-pane">
                 <div id="editor"></div>
                 <textarea id="content" name="content" style="display: none;">{{ note.content }}</textarea>
+                
+                <div class="editor-statusbar">
+                    <div class="word-count">Words: <span id="word-count">0</span></div>
+                    <div class="save-status">All changes saved</div>
+                </div>
             </div>
             <div class="preview-pane">
                 <div id="preview" class="note-content"></div>
             </div>
         </div>
+
+        <!-- Add exit button -->
+        <button type="button" class="exit-distraction-free" onclick="toggleDistractMode()" title="Exit Distraction Free Mode">
+            <span class="icon">👁️</span>
+        </button>
 
         <div class="form-footer">
             <!-- Current attachments section -->
@@ -209,7 +219,14 @@ graph TD
         }
     });
 
-    // Handle preview updates and sync with form
+    // Add word count update
+    function updateWordCount() {
+        const text = editor.getValue();
+        const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+        document.getElementById('word-count').textContent = wordCount;
+    }
+
+    // Update word count on change
     let previewTimeout;
     editor.on('change', function() {
         clearTimeout(previewTimeout);
@@ -217,7 +234,13 @@ graph TD
         
         // Update hidden textarea with current content
         document.getElementById('content').value = editor.getValue();
+        
+        // Update word count
+        updateWordCount();
     });
+
+    // Initial word count
+    updateWordCount();
 
     // Initial preview
     updatePreview();
@@ -235,6 +258,21 @@ graph TD
     editor.refresh();
     window.addEventListener('resize', () => {
         editor.refresh();
+    });
+
+    // Move the function to global scope
+    window.toggleDistractMode = function() {
+        document.body.classList.toggle('distraction-free');
+        // Refresh CodeMirror to adjust to new size
+        editor.refresh();
+    }
+
+    // Add keyboard shortcut for distraction mode (optional)
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey && e.key === 'z') {  // Alt+Z for distraction-free mode
+            e.preventDefault();
+            toggleDistractMode();
+        }
     });
 });
 </script>

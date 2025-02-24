@@ -19,11 +19,21 @@
             <div class="editor-pane">
                 <div id="editor"></div>
                 <textarea id="content" name="content" style="display: none;"></textarea>
+                
+                <div class="editor-statusbar">
+                    <div class="word-count">Words: <span id="word-count">0</span></div>
+                    <div class="save-status">All changes saved</div>
+                </div>
             </div>
             <div class="preview-pane">
                 <div id="preview" class="note-content"></div>
             </div>
         </div>
+
+        <!-- Add exit button -->
+        <button type="button" class="exit-distraction-free" onclick="toggleDistractMode()" title="Exit Distraction Free Mode">
+            <span class="icon">👁️</span>
+        </button>
 
         <div class="form-footer">
             <div class="file-upload">
@@ -34,6 +44,10 @@
             <div class="form-actions">
                 <button type="button" id="togglePreview">Toggle Preview</button>
                 <button type="submit">Save Note</button>
+                <button type="button" id="distraction-free" onclick="toggleDistractMode()">
+                    <span class="icon">👁️</span>
+                    <span class="tooltip">Distraction Free Mode</span>
+                </button>
             </div>
         </div>
     </form>
@@ -229,6 +243,61 @@ graph TD
     window.addEventListener('resize', () => {
         editor.refresh();
     });
+
+    // Move the function to global scope
+    window.toggleDistractMode = function() {
+        document.body.classList.toggle('distraction-free');
+        // Refresh CodeMirror to adjust to new size
+        editor.refresh();
+    }
+
+    // Add keyboard shortcut for distraction mode (optional)
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey && e.key === 'z') {  // Alt+Z for distraction-free mode
+            e.preventDefault();
+            toggleDistractMode();
+        }
+    });
+
+    // Add word count update
+    function updateWordCount() {
+        const text = editor.getValue();
+        const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+        document.getElementById('word-count').textContent = wordCount;
+    }
+
+    // Update word count on change
+    editor.on('change', function() {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(updatePreview, 300);
+        
+        document.getElementById('content').value = editor.getValue();
+        
+        // Update word count
+        updateWordCount();
+    });
+
+    // Initial word count
+    updateWordCount();
+
+    // Autosave function
+    async function autoSave() {
+        const content = editor.getValue();
+        const title = document.getElementById('title').value;
+        const tags = document.getElementById('tags').value;
+        
+        try {
+            await fetch('/api/autosave', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, title, tags })
+            });
+            
+            document.querySelector('.save-status').textContent = 'All changes saved';
+        } catch (err) {
+            document.querySelector('.save-status').textContent = 'Error saving changes';
+        }
+    }
 });
 </script>
 {% endblock %} 

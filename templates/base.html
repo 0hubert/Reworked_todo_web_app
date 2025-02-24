@@ -139,6 +139,27 @@
                 }
                 console.log('Theme changed to:', theme); // Debug log
             });
+
+            // Add sidebar toggle functionality
+            const toggleSidebarBtn = document.getElementById('toggle-sidebar');
+            const appContainer = document.querySelector('.app-container');
+            
+            toggleSidebarBtn.addEventListener('click', function() {
+                appContainer.classList.toggle('sidebar-hidden');
+                // Update button text/icon and title based on state
+                const isHidden = appContainer.classList.contains('sidebar-hidden');
+                this.textContent = isHidden ? '▶' : '◀';
+                this.title = isHidden ? 'Show Sidebar' : 'Hide Sidebar';
+                
+                // Trigger resize event to update editor if present
+                window.dispatchEvent(new Event('resize'));
+            });
+
+            // Initialize correct button state
+            if (appContainer.classList.contains('sidebar-hidden')) {
+                toggleSidebarBtn.textContent = '▶';
+                toggleSidebarBtn.title = 'Show Sidebar';
+            }
         });
 
         document.addEventListener('DOMContentLoaded', function() {
