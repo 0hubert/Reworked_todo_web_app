@@ -68,39 +68,31 @@
     </div>
 
     <script>
-        // Dark mode logic
+        // Place this code at the start of your script, before any other code
         document.addEventListener('DOMContentLoaded', function() {
             const themeToggle = document.getElementById('theme-toggle');
+            if (!themeToggle) return; // Guard clause
+
             const html = document.documentElement;
             const themeLabel = document.querySelector('.theme-label');
-            const toggleSidebar = document.getElementById('toggle-sidebar');
-            const appContainer = document.querySelector('.app-container');
-
-            // Theme handling
+            
+            // Load theme from localStorage
             const savedTheme = localStorage.getItem('theme') || 'light';
             html.setAttribute('data-theme', savedTheme);
             themeToggle.checked = savedTheme === 'dark';
-            themeLabel.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+            if (themeLabel) {
+                themeLabel.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+            }
 
+            // Theme toggle handler
             themeToggle.addEventListener('change', function() {
                 const theme = this.checked ? 'dark' : 'light';
                 html.setAttribute('data-theme', theme);
                 localStorage.setItem('theme', theme);
-                themeLabel.textContent = theme === 'dark' ? '☀️' : '🌙';
-            });
-
-            // Sidebar toggle
-            const sidebarState = localStorage.getItem('sidebarCollapsed') === 'true';
-            if (sidebarState) {
-                appContainer.classList.add('sidebar-collapsed');
-                toggleSidebar.textContent = '▶';
-            }
-
-            toggleSidebar.addEventListener('click', function() {
-                appContainer.classList.toggle('sidebar-collapsed');
-                const isCollapsed = appContainer.classList.contains('sidebar-collapsed');
-                localStorage.setItem('sidebarCollapsed', isCollapsed);
-                this.textContent = isCollapsed ? '▶' : '◀';
+                if (themeLabel) {
+                    themeLabel.textContent = theme === 'dark' ? '☀️' : '🌙';
+                }
+                console.log('Theme changed to:', theme); // Debug log
             });
         });
 
@@ -159,8 +151,10 @@
                     category: 'recent',
                     description: "Last updated: {{ note.updated_at.strftime('%Y-%m-%d') }}",
                     action: () => window.location.href = "{{ url_for('view_note', id=note.id) }}"
-                }{{ "," if not loop.last }}
+                }{% if not loop.last %},{% endif %}
                 {% endfor %}
+
+                {% if all_notes %},{% endif %}  // Add comma only if there were notes
 
                 // Templates
                 {

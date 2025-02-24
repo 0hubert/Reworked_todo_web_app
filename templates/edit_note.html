@@ -3,46 +3,239 @@
 {% block content %}
 <div class="note-form">
     <h2>Edit Note</h2>
-    <form method="POST" enctype="multipart/form-data">
-        <div>
-            <label for="title">Title:</label>
-            <input type="text" id="title" name="title" value="{{ note.title }}" required>
-        </div>
-        <div>
-            <label for="content">Content:</label>
-            <textarea id="content" name="content" rows="20" required>{{ note.content }}</textarea>
-        </div>
-        <div>
-            <label for="tags">Tags (comma-separated):</label>
-            <input type="text" id="tags" name="tags" value="{{ note.tags }}">
+    <form method="POST" enctype="multipart/form-data" id="noteForm">
+        <div class="form-header">
+            <div>
+                <label for="title">Title:</label>
+                <input type="text" id="title" name="title" value="{{ note.title }}" required>
+            </div>
+            <div>
+                <label for="tags">Tags:</label>
+                <input type="text" id="tags" name="tags" value="{{ note.tags }}" placeholder="comma-separated tags">
+            </div>
         </div>
         
-        <!-- Add current attachments section -->
-        {% if note.attachments %}
-        <div class="current-attachments">
-            <label>Current Attachments:</label>
-            <ul class="attachment-list">
-                {% for attachment in note.attachments %}
-                <li>
-                    <span class="attachment-name">📎 {{ attachment.original_filename }}</span>
-                    <span class="attachment-meta">({{ (attachment.file_size / 1024)|round(1) }} KB)</span>
-                    <a href="{{ url_for('delete_attachment', file_id=attachment.id) }}" 
-                       class="delete-attachment"
-                       onclick="return confirm('Delete this attachment?')">×</a>
-                </li>
-                {% endfor %}
-            </ul>
+        <div class="editor-container">
+            <div class="editor-pane">
+                <div id="editor"></div>
+                <textarea id="content" name="content" style="display: none;">{{ note.content }}</textarea>
+            </div>
+            <div class="preview-pane">
+                <div id="preview" class="note-content"></div>
+            </div>
         </div>
-        {% endif %}
-        
-        <!-- Add new file upload section -->
-        <div class="file-upload">
-            <label for="files">Add Attachments:</label>
-            <input type="file" id="files" name="files" multiple>
-            <small>Allowed files: .txt, .pdf, .png, .jpg, .jpeg, .gif, .doc, .docx, .md (Max 16MB)</small>
+
+        <div class="form-footer">
+            <!-- Current attachments section -->
+            {% if note.attachments %}
+            <div class="current-attachments">
+                <label>Current Attachments:</label>
+                <ul class="attachment-list">
+                    {% for attachment in note.attachments %}
+                    <li>
+                        <span class="attachment-name">📎 {{ attachment.original_filename }}</span>
+                        <span class="attachment-meta">({{ (attachment.file_size / 1024)|round(1) }} KB)</span>
+                        <a href="{{ url_for('delete_attachment', file_id=attachment.id) }}" 
+                           class="delete-attachment"
+                           onclick="return confirm('Delete this attachment?')">×</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <div class="file-upload">
+                <label for="files">Add Attachments:</label>
+                <input type="file" id="files" name="files" multiple>
+                <small>Allowed files: .txt, .pdf, .png, .jpg, .jpeg, .gif, .doc, .docx, .md (Max 16MB)</small>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" id="togglePreview">Toggle Preview</button>
+                <button type="submit">Update Note</button>
+            </div>
         </div>
-        
-        <button type="submit">Update Note</button>
     </form>
 </div>
+
+<!-- Add CodeMirror and its dependencies -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/nord.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/show-hint.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/markdown/markdown.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/edit/continuelist.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/show-hint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/markdown-hint.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/mode/overlay.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/xml/xml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/gfm/gfm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Mermaid
+    mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+
+    // Wiki-link autocompletion
+    function wikiLinkHint(cm) {
+        const cursor = cm.getCursor();
+        const line = cm.getLine(cursor.line);
+        const start = cursor.ch;
+        const end = cursor.ch;
+        
+        const word = line.slice(Math.max(0, start - 2), end);
+        if (word === '[[') {
+            return fetch('/api/notes/list')
+                .then(response => response.json())
+                .then(data => {
+                    return {
+                        list: data.map(note => note.title),
+                        from: CodeMirror.Pos(cursor.line, start - 2),
+                        to: CodeMirror.Pos(cursor.line, end)
+                    };
+                });
+        }
+    }
+
+    // Text formatting helper
+    function formatText(cm, prefix, suffix) {
+        const selection = cm.getSelection();
+        cm.replaceSelection(prefix + selection + suffix);
+    }
+
+    // Insert heading
+    function insertHeading(cm) {
+        const cursor = cm.getCursor();
+        const line = cm.getLine(cursor.line);
+        const prefix = line.match(/^#+\s*/)?.[0] || '';
+        
+        if (prefix) {
+            const level = prefix.trim().length;
+            if (level < 6) {
+                cm.replaceRange('#' + prefix, 
+                    {line: cursor.line, ch: 0}, 
+                    {line: cursor.line, ch: prefix.length});
+            } else {
+                cm.replaceRange('', 
+                    {line: cursor.line, ch: 0}, 
+                    {line: cursor.line, ch: prefix.length});
+            }
+        } else {
+            cm.replaceRange('# ', 
+                {line: cursor.line, ch: 0}, 
+                {line: cursor.line, ch: 0});
+        }
+    }
+
+    // Insert Mermaid diagram
+    function insertMermaidDiagram(cm) {
+        const template = `\`\`\`mermaid
+graph TD
+    A[Start] --> B[Process]
+    B --> C[End]
+\`\`\``;
+        cm.replaceSelection(template);
+    }
+
+    // Insert LaTeX equation
+    function insertLatexEquation(cm) {
+        const template = '$$\ny = mx + b\n$$';
+        cm.replaceSelection(template);
+    }
+
+    // Update preview function
+    function updatePreview() {
+        const content = editor.getValue();
+        fetch('/api/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: content })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const preview = document.getElementById('preview');
+            preview.innerHTML = data.html;
+            
+            // Render LaTeX
+            MathJax.typesetPromise([preview]);
+            
+            // Render Mermaid diagrams
+            preview.querySelectorAll('.language-mermaid').forEach(block => {
+                const code = block.textContent;
+                const div = document.createElement('div');
+                div.className = 'mermaid';
+                div.textContent = code;
+                block.parentNode.replaceChild(div, block);
+                mermaid.init(undefined, div);
+            });
+        });
+    }
+
+    // Initialize CodeMirror with existing content
+    const editor = CodeMirror(document.getElementById('editor'), {
+        mode: "wiki-links",
+        theme: 'nord',
+        lineNumbers: true,
+        lineWrapping: true,
+        viewportMargin: Infinity,
+        scrollbarStyle: "native",
+        fixedGutter: true,
+        flattenSpans: true,
+        inputStyle: 'contenteditable',
+        lineSeparator: '\n',
+        value: document.getElementById('content').value,
+        extraKeys: {
+            'Enter': 'newlineAndIndentContinueMarkdownList',
+            'Ctrl-Space': 'autocomplete',
+            'Tab': function(cm) {
+                cm.replaceSelection('    ');
+            },
+            // Markdown shortcuts
+            'Ctrl-B': function(cm) { formatText(cm, '**', '**'); },
+            'Ctrl-I': function(cm) { formatText(cm, '_', '_'); },
+            'Ctrl-K': function(cm) { formatText(cm, '`', '`'); },
+            'Ctrl-L': function(cm) { formatText(cm, '[[', ']]'); },
+            'Ctrl-H': function(cm) { insertHeading(cm); },
+            'Ctrl-M': function(cm) { insertMermaidDiagram(cm); },
+            'Ctrl-E': function(cm) { insertLatexEquation(cm); }
+        },
+        autoCloseBrackets: true,
+        matchBrackets: true,
+        hintOptions: {
+            completeSingle: false,
+            hint: wikiLinkHint
+        }
+    });
+
+    // Handle preview updates and sync with form
+    let previewTimeout;
+    editor.on('change', function() {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(updatePreview, 300);
+        
+        // Update hidden textarea with current content
+        document.getElementById('content').value = editor.getValue();
+    });
+
+    // Initial preview
+    updatePreview();
+
+    // Toggle preview pane
+    const toggleBtn = document.getElementById('togglePreview');
+    const editorContainer = document.querySelector('.editor-container');
+    
+    toggleBtn.addEventListener('click', function() {
+        editorContainer.classList.toggle('preview-hidden');
+        editor.refresh();
+    });
+
+    // Add refresh on window resize
+    editor.refresh();
+    window.addEventListener('resize', () => {
+        editor.refresh();
+    });
+});
+</script>
 {% endblock %} 

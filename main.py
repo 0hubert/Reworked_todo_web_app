@@ -83,8 +83,9 @@ class Note(db.Model):
         return linking_notes
 
 # Routes
-def get_all_notes():
-    return Note.query.order_by(Note.updated_at.desc()).all()
+def get_all_notes(limit=None):
+    query = Note.query.order_by(Note.updated_at.desc())
+    return query.limit(limit).all() if limit else query.all()
 
 @app.route('/')
 def index():
